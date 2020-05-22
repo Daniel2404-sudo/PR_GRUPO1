@@ -1,0 +1,85 @@
+#include "proyecto_1.h"
+#include "ui_proyecto_1.h"
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <string.h>
+#include <QLCDNumber>
+#include <QIntValidator>
+
+using namespace std;
+
+proyecto_1::proyecto_1(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::proyecto_1)
+{
+    ui->setupUi(this);
+    setWindowTitle("Información Motor AC");
+    ui -> carnetLine -> setMaxLength(7);
+    ui -> carnetLine -> setValidator(new QIntValidator(this));
+
+}
+
+proyecto_1::~proyecto_1()
+{
+    delete ui;
+}
+
+
+void proyecto_1::on_inicioBoton_clicked()
+{
+    QString carnet;
+    int pid;
+    int cont;
+    FILE *fd_arch;
+    long tam_arch = 0;
+    char buffer[255] = {0};
+    char Ncarnet[10] = {0};
+    char ruta[20] = {"./comunicacion.bin"};
+    char *prog[3];
+    carnet = ui -> carnetLine ->text();
+    for(cont = 0; cont < 8; cont++)
+    {
+        std::string cadenaStd = carnet.toStdString();
+        Ncarnet[cont] = cadenaStd[cont];
+    }
+    cout << Ncarnet << endl;
+    //ui -> lcdNumber -> display("123");
+    //ui -> lcdNumber ->setPalette(Qt::red);
+    pid = fork();
+    switch (pid)
+    {
+        case -1: // Error
+            cout<< "ERROR" <<endl;
+        break;
+
+        case 0: // Proceso hijo
+            cout << "\n Proceso hijo. PID = " << pid << endl;
+            prog[0] = ruta;
+            prog[1] = Ncarnet;
+            prog[2] = NULL;
+            execv("/home/alse/comunicacion.bin",prog);
+        break;
+
+        default: //Continua con el proceso padre)
+            cout << "\n Proceso padre. PID = " << pid << endl;
+            fd_arch = fopen("/home/alse/Documents/datos.txt", "r+");
+            if(fd_arch == NULL)
+                cout << "\n\n Error (NO ABIERTO)." << endl;
+            else
+            {
+                cout << "\n\n Creado (ABIERTO)." << endl;
+                fseek(fd_arch, 0, SEEK_END);
+                tam_arch = ftell(fd_arch);
+                rewind(fd_arch);
+                if(fread(buffer, 1, tam_arch, fd_arch) != tam_arch)
+                    cout << "\n\n Error al leer el archivo." << endl;
+                else
+                    cout << "\n\n Datos motor:\n" << buffer << endl;
+                fclose(fd_arch);
+            }
+    }
+}
